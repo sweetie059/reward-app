@@ -1,0 +1,116 @@
+// schema.prisma
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Users {
+  id                  Int      @id @default(autoincrement())
+  username            String   @unique @db.VarChar(100)
+  firebase_uid  String     @unique
+  email String? @db.VarChar(255) @unique
+  password_hash       String?  @db.VarChar(255)
+  referral_code       String?  @unique @db.VarChar(50)
+  referred_by         Int?
+  mobile_money_number String?  @db.VarChar(20)
+  points_balance      BigInt   @default(0)
+  created_at          DateTime @default(now())
+  updated_at          DateTime @default(now())
+
+  // Relations
+  referredUsers       Users[]           @relation("UserReferrals")
+  referrer            Users?            @relation("UserReferrals", fields: [referred_by], references: [id])
+  TaskCompletions     TaskCompletions[]
+  ReferralsAsReferrer Referrals[]       @relation("Referrer")
+  ReferralsAsReferred Referrals[]       @relation("Referred")
+  PayoutRequests      PayoutRequests[]
+  Transactions        Transactions[]
+  Leaderboard         Leaderboard?
+}
+
+model TaskCompletions {
+  id            Int       @id @default(autoincrement())
+  user_id       Int
+  offer_id      String?   @db.VarChar(100)
+  points_earned BigInt?
+  status        String    @default("pending") @db.VarChar(20)
+  completed_at  DateTime?
+  created_at    DateTime  @default(now())
+  updated_at    DateTime  @default(now())
+
+  // Relations
+  user Users @relation(fields: [user_id], references: [id])
+}
+
+model Referrals {
+  id                   Int      @id @default(autoincrement())
+  referrer_id          Int
+  referred_id          Int
+  bonus_points_awarded BigInt?
+  awarded_at           DateTime @default(now())
+
+  // Relations
+  referrer Users @relation("Referrer", fields: [referrer_id], references: [id])
+  referred Users @relation("Referred", fields: [referred_id], references: [id])
+
+  @@unique([referrer_id, referred_id])
+}
+
+model PayoutRequests {
+  id                  Int       @id @default(autoincrement())
+  user_id             Int
+  mobile_money_number String?   @db.VarChar(20)
+  amount_points       BigInt?
+  amount_money        Decimal?  @db.Decimal(10, 2)
+  status              String    @default("pending") @db.VarChar(20)
+  requested_at        DateTime  @default(now())
+  processed_at        DateTime?
+
+  // Relations
+  user Users @relation(fields: [user_id], references: [id])
+}
+
+model Offers {
+  id                   Int      @id @default(autoincrement())
+  offer_name           String?  @db.VarChar(255)
+  offer_provider       String?  @db.VarChar(100)
+  payout_points        BigInt?
+  country_restrictions String?
+  active               Boolean  @default(true)
+  created_at           DateTime @default(now())
+  updated_at           DateTime @default(now())
+}
+
+model Transactions {
+  id          Int      @id @default(autoincrement())
+  user_id     Int
+  type        String?  @db.VarChar(50)
+  points      BigInt?
+  description String?
+  created_at  DateTime @default(now())
+
+  // Relations
+  user Users @relation(fields: [user_id], references: [id])
+}
+
+model Leaderboard {
+  id         Int      @id @default(autoincrement())
+  user_id    Int      @unique
+  points     BigInt?
+  rank       Int?
+  updated_at DateTime @default(now())
+
+  // Relations
+  user Users @relation(fields: [user_id], references: [id])
+}
+
+model AdminSettings {
+  id            Int      @id @default(autoincrement())
+  setting_key   String   @unique @db.VarChar(255)
+  setting_value String?
+  updated_at    DateTime @default(now())
+}
